@@ -6,4 +6,4 @@ generation:
   singleTagPerOp: false
 go:
   version: ""
-  packageName: unit21
+  packageName: unit
