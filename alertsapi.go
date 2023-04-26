@@ -172,7 +172,10 @@ func (s *alertsAPI) ExportAlerts(ctx context.Context, request operations.ExportA
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the entity is first created.
 func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.GetAlertByUnit21IDRequest) (*operations.GetAlertByUnit21IDResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -258,7 +261,10 @@ func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.G
 //	| IMAGE_FACE_IMAGE            |
 func (s *alertsAPI) LinkMediaToAlert(ctx context.Context, request operations.LinkMediaToAlertRequest) (*operations.LinkMediaToAlertResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}/link-media", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}/link-media", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {
@@ -405,7 +411,10 @@ func (s *alertsAPI) ListAlerts(ctx context.Context, request operations.ListAlert
 //	| `previously_existed`	   | Boolean  | If alert (with the same `alert_id`) already exists      |
 func (s *alertsAPI) UpdateAlert(ctx context.Context, request operations.UpdateAlertRequest) (*operations.UpdateAlertResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}/update", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}/update", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

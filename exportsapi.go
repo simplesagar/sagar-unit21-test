@@ -37,7 +37,10 @@ func newExportsAPI(defaultClient, securityClient HTTPClient, serverURL, language
 // Returns a signed url to download the file.
 func (s *exportsAPI) DownloadFileExport(ctx context.Context, request operations.DownloadFileExportRequest) (*operations.DownloadFileExportResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/file-exports/download/{file_export_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/file-exports/download/{file_export_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

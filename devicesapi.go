@@ -163,7 +163,10 @@ func (s *devicesAPI) ExportDevices(ctx context.Context, request operations.Expor
 // This endpoint requires the `device_id` which is a unique ID created by your organization to identify the device. The `org_name` is your Unit21 appointed organization name such as `google` or `acme`.
 func (s *devicesAPI) GetDeviceByExternal(ctx context.Context, request operations.GetDeviceByExternalRequest) (*operations.GetDeviceByExternalResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/devices/{device_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/devices/{device_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -279,7 +282,10 @@ func (s *devicesAPI) ListDevices(ctx context.Context, request shared.ListRequest
 //	| `previously_existed`	   | Boolean  | 	If entity (with the same `device_id`) already exists |
 func (s *devicesAPI) UpdateDeviceByExternal(ctx context.Context, request operations.UpdateDeviceByExternalRequest) (*operations.UpdateDeviceByExternalResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/devices/{device_id}/update", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/devices/{device_id}/update", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

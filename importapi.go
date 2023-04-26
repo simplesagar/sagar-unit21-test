@@ -60,7 +60,10 @@ func newImportAPI(defaultClient, securityClient HTTPClient, serverURL, language,
 //	| `unknown`	               | This is akin to 500 server error, and Unit21 does not have a specific known cause at this time                                                                                                                                                       |
 func (s *importAPI) DatafileStatus(ctx context.Context, request operations.DatafileStatusRequest) (*operations.DatafileStatusResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/imports/{file_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/imports/{file_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -200,7 +203,10 @@ func (s *importAPI) ListDatafiles(ctx context.Context, request operations.ListDa
 // We support JSON, JSONL, CSV format only.
 func (s *importAPI) UploadDatafiles(ctx context.Context, request operations.UploadDatafilesRequest) (*operations.UploadDatafilesResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{pre_signed_url}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{pre_signed_url}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "multipart")
 	if err != nil {

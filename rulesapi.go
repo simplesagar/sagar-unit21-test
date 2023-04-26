@@ -157,7 +157,10 @@ func (s *rulesAPI) ListRules(ctx context.Context, request shared.ListRequest) (*
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the rule is first created.
 func (s *rulesAPI) ReadOneRule(ctx context.Context, request operations.ReadOneRuleRequest) (*operations.ReadOneRuleResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/rules/{unit21_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/rules/{unit21_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

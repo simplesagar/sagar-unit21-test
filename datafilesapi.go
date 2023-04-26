@@ -90,7 +90,10 @@ func (s *datafilesAPI) CreateDatafiles(ctx context.Context, request operations.C
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the datafile is first created.
 func (s *datafilesAPI) GetDatafileByUnit21ID(ctx context.Context, request operations.GetDatafileByUnit21IDRequest) (*operations.GetDatafileByUnit21IDResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/datafiles/{unit21_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/datafiles/{unit21_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -132,7 +135,10 @@ func (s *datafilesAPI) GetDatafileByUnit21ID(ctx context.Context, request operat
 // Please note that an empty response `{}` will be returned if the datafile is not yet processed.
 func (s *datafilesAPI) GetDatafileMappings(ctx context.Context, request operations.GetDatafileMappingsRequest) (*operations.GetDatafileMappingsResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/datafiles/{unit21_id}/mappings", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/datafiles/{unit21_id}/mappings", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

@@ -36,7 +36,10 @@ func newAgentsAPI(defaultClient, securityClient HTTPClient, serverURL, language,
 // Archives an agent so that he/she can no longer log in to the dashboard.
 func (s *agentsAPI) DeactivateAgent(ctx context.Context, request operations.DeactivateAgentRequest) (*operations.DeactivateAgentResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/agents/{agent_email}/deactivate", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/agents/{agent_email}/deactivate", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "PUT", url, nil)
 	if err != nil {

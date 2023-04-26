@@ -172,7 +172,10 @@ func (s *sarsAPI) ListSars(ctx context.Context, request shared.ListRequest) (*op
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the sar is first created.
 func (s *sarsAPI) ReadOneSar(ctx context.Context, request operations.ReadOneSarRequest) (*operations.ReadOneSarResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/sars/{unit21_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/sars/{unit21_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

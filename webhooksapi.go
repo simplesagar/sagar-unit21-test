@@ -37,7 +37,10 @@ func newWebhooksAPI(defaultClient, securityClient HTTPClient, serverURL, languag
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the webhook is first created.
 func (s *webhooksAPI) UpdateWebhook(ctx context.Context, request operations.UpdateWebhookRequest) (*operations.UpdateWebhookResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/webhooks/{unit21_id}/update", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/webhooks/{unit21_id}/update", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

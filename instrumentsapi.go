@@ -214,7 +214,10 @@ func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operatio
 // This endpoint requires the `instrument_id` which is a unique ID created by your organization to identify the instrument. The `org_name` is your Unit21 appointed organization name such as `google` or `acme`.
 func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.GetInstrumentRequest) (*operations.GetInstrumentResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/instruments/{instrument_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/instruments/{instrument_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -378,7 +381,10 @@ func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.Lis
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 func (s *instrumentsAPI) UpdateInstrument(ctx context.Context, request operations.UpdateInstrumentRequest) (*operations.UpdateInstrumentResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/instruments/{instrument_id}/update", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/instruments/{instrument_id}/update", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

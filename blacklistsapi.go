@@ -54,7 +54,10 @@ func newBlacklistsAPI(defaultClient, securityClient HTTPClient, serverURL, langu
 //	| `BUSINESS` | Series of fields that a Unit21 business entity will be matched against.  | 	business_data object            |
 func (s *blacklistsAPI) AddBlacklistValues(ctx context.Context, request operations.AddBlacklistValuesRequest) (*operations.AddBlacklistValuesResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/blacklists/{unit21_id}/add-values", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/blacklists/{unit21_id}/add-values", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

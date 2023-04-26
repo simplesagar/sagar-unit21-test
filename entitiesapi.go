@@ -43,7 +43,10 @@ func newEntitiesAPI(defaultClient, securityClient HTTPClient, serverURL, languag
 // Instrument details can then be supplemented through the `/instruments/create` or `/instruments/update` endpoints.
 func (s *entitiesAPI) AddInstruments(ctx context.Context, request operations.AddInstrumentsRequest) (*operations.AddInstrumentsResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/add-instruments", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/add-instruments", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "LinkInstrument", "json")
 	if err != nil {
@@ -211,7 +214,10 @@ func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEnt
 // Deletes rich media objects (images, videos, etc.) to an existing entity.
 func (s *entitiesAPI) DelMediaEntity(ctx context.Context, request operations.DelMediaEntityRequest) (*operations.DelMediaEntityResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/delete-all-media", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/delete-all-media", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "PUT", url, nil)
 	if err != nil {
@@ -358,7 +364,10 @@ func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.Exp
 // This endpoint requires the `entity_id` which is a unique ID created by your organization to identify the entity. The `org_name` is your Unit21 appointed organization name such as `google` or `acme`.
 func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntityRequest) (*operations.GetEntityResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -476,7 +485,10 @@ func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntit
 //	| IMAGE_FACE_IMAGE            |
 func (s *entitiesAPI) LinkMediaToEntity(ctx context.Context, request operations.LinkMediaToEntityRequest) (*operations.LinkMediaToEntityResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/link-media", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/link-media", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {
@@ -646,7 +658,10 @@ func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntit
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 func (s *entitiesAPI) UpdateEntity(ctx context.Context, request operations.UpdateEntityRequest) (*operations.UpdateEntityResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/update", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/update", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

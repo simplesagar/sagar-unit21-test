@@ -199,7 +199,10 @@ func (s *eventsAPI) ExportTransactions(ctx context.Context, request operations.E
 // This endpoint requires the `events_id` which is a unique ID created by your organization to identify the event. The `org_name` is your Unit21 appointed organization name such as `google` or `acme`.
 func (s *eventsAPI) GetEvent(ctx context.Context, request operations.GetEventRequest) (*operations.GetEventResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/events/{event_id}", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/events/{event_id}", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -335,7 +338,10 @@ func (s *eventsAPI) ListEvents(ctx context.Context, request shared.ListDateReque
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 func (s *eventsAPI) UpdateEvent(ctx context.Context, request operations.UpdateEventRequest) (*operations.UpdateEventResponse, error) {
 	baseURL := s.serverURL
-	url := utils.GenerateURL(ctx, baseURL, "/{org_name}/events/{event_id}/update", request, nil)
+	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/events/{event_id}/update", request, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error generating URL: %w", err)
+	}
 
 	bodyReader, reqContentType, err := utils.SerializeRequestBody(ctx, request, "RequestBody", "json")
 	if err != nil {

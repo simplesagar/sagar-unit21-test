@@ -2,12 +2,11 @@
 ```go
 package main
 
-import (
-    "context"
-    "log"
-    "unit"
-    "unit/pkg/models/shared"
-    "unit/pkg/models/operations"
+import(
+	"context"
+	"log"
+	"unit"
+	"unit/pkg/models/operations"
 )
 
 func main() {
