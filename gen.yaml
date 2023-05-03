@@ -7,8 +7,9 @@ management:
 generation:
   telemetryEnabled: false
   sdkClassName: SDK
+  sdkFlattening: true
   singleTagPerOp: false
 go:
-  version: 1.2.0
+  version: ""
   maxMethodParams: 0
   packageName: unit
