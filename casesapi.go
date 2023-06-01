@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -41,11 +43,11 @@ func newCasesAPI(defaultClient, securityClient HTTPClient, serverURL, language, 
 //
 // You can add the following objects to a case:
 //
-//   | Field                    | Type     | Description                                                             |
-//   |--------------------------|----------|-------------------------------------------------------------------------|
-//   | `alerts`	               | Array[]  | Alerts that are associated with this case. Consists of `alert_id`s      |
-//   | `events`	               | Array[]  | Transactions affiliated with the case. Consists of `event_id`s          |
-//   | `entities`	             | Array[]  | Entities affiliated with the case. Consists of `entity_id`s             |
+//	| Field                    | Type     | Description                                                             |
+//	|--------------------------|----------|-------------------------------------------------------------------------|
+//	| `alerts`	               | Array[]  | Alerts that are associated with this case. Consists of `alert_id`s      |
+//	| `events`	               | Array[]  | Transactions affiliated with the case. Consists of `event_id`s          |
+//	| `entities`	             | Array[]  | Entities affiliated with the case. Consists of `entity_id`s             |
 //
 // Updates to a cases's `case_id` are not allowed.
 //
@@ -54,15 +56,12 @@ func newCasesAPI(defaultClient, securityClient HTTPClient, serverURL, language, 
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 //
-//
 // The response will consist of the following fields:
 //
-//   | Field                    | Type     | Description                                          |
-//   |--------------------------|----------|------------------------------------------------------|
-//   | `case_id`	               | String   | 	Unique identifier of the case on your platform     |
-//   | `previously_existed`	   | Boolean  | 	If case (with the same `case_id`) already exists   |
-//
-
+//	| Field                    | Type     | Description                                          |
+//	|--------------------------|----------|------------------------------------------------------|
+//	| `case_id`	               | String   | 	Unique identifier of the case on your platform     |
+//	| `previously_existed`	   | Boolean  | 	If case (with the same `case_id`) already exists   |
 func (s *casesAPI) CreateCase(ctx context.Context, request operations.CreateCaseCaseData) (*operations.CreateCaseResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/cases/create"
@@ -79,6 +78,8 @@ func (s *casesAPI) CreateCase(ctx context.Context, request operations.CreateCase
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -91,7 +92,13 @@ func (s *casesAPI) CreateCase(ctx context.Context, request operations.CreateCase
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -105,7 +112,7 @@ func (s *casesAPI) CreateCase(ctx context.Context, request operations.CreateCase
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.CreateCaseResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -124,8 +131,6 @@ func (s *casesAPI) CreateCase(ctx context.Context, request operations.CreateCase
 // Either the `filters` or the list of `case IDs` are required for the export.
 //
 // Custom data filters are not supported for bulk exports at this time.
-//
-
 func (s *casesAPI) ExportCases(ctx context.Context, request operations.ExportCasesRequestBody) (*operations.ExportCasesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/cases/bulk-export"
@@ -139,6 +144,8 @@ func (s *casesAPI) ExportCases(ctx context.Context, request operations.ExportCas
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -151,7 +158,13 @@ func (s *casesAPI) ExportCases(ctx context.Context, request operations.ExportCas
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -171,7 +184,6 @@ func (s *casesAPI) ExportCases(ctx context.Context, request operations.ExportCas
 // Returns all data objects belonging to a single case.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the case is first created.
-
 func (s *casesAPI) GetCaseByUnit21ID(ctx context.Context, request operations.GetCaseByUnit21IDRequest) (*operations.GetCaseByUnit21IDResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/cases/{unit21_id}", request, nil)
@@ -183,6 +195,8 @@ func (s *casesAPI) GetCaseByUnit21ID(ctx context.Context, request operations.Get
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -193,7 +207,13 @@ func (s *casesAPI) GetCaseByUnit21ID(ctx context.Context, request operations.Get
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -207,7 +227,7 @@ func (s *casesAPI) GetCaseByUnit21ID(ctx context.Context, request operations.Get
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -230,34 +250,37 @@ func (s *casesAPI) GetCaseByUnit21ID(ctx context.Context, request operations.Get
 // **Form-data** sent to this endpoint must use the key `media_key` and the `value` as the media file.  If you wish to provide optional information, use the `media_key` and provide stringified JSON data as the value.  There are no required fields in each media file's supplementary form data. However, if a recognized `media_type` value is provided,  the Unit21 system will be able to use the media object for purposes such as document verification.
 //
 // ```
-//     --form 'document_front=@/src/103031/images/document_front.jpg' \
-//     --form 'document_front={"media_type": "IMAGE_ID_CARD_FRONT", "source": "passport_app", "timestamp": 1572673229}'
+//
+//	--form 'document_front=@/src/103031/images/document_front.jpg' \
+//	--form 'document_front={"media_type": "IMAGE_ID_CARD_FRONT", "source": "passport_app", "timestamp": 1572673229}'
+//
 // ```
 //
 // **Base64** encoded media objects must follow the format:
 //
 // ```json
-//   {
-//     "media": "iVBORw0KGgoAAAANSUhEUgAAAQMAAADCCAYAAABNEqduAAAgAElEQVR4Aey9CbgmV1Xv...",
-//     "name": "Drivers_License.png",
-//     "media_type": "IMAGE_DRIVERS_LICENSE_FRONT"
-//   }
+//
+//	{
+//	  "media": "iVBORw0KGgoAAAANSUhEUgAAAQMAAADCCAYAAABNEqduAAAgAElEQVR4Aey9CbgmV1Xv...",
+//	  "name": "Drivers_License.png",
+//	  "media_type": "IMAGE_DRIVERS_LICENSE_FRONT"
+//	}
+//
 // ```
 //
-// `media` and `name` are the only required fields for each media object. The `name`` must include the file extension such a `File.pdf`. Supplementary form data is sent through the optional `custom_data` object.
+// `media` and `name` are the only required fields for each media object. The `name“ must include the file extension such a `File.pdf`. Supplementary form data is sent through the optional `custom_data` object.
 //
 // Recognized values of `media_type` are:
 //
-//   | media_type                    |
-//   |-------------------------------|
-//   | IMAGE_PROFILE_PICTURE         |
-//   | IMAGE_DRIVERS_LICENSE_FRONT   |
-//   | IMAGE_DRIVERS_LICENSE_BACK    |
-//   | IMAGE_PASSPORT_FRONT          |
-//   | IMAGE_ID_CARD_FRONT           |
-//   | IMAGE_ID_CARD_BACK            |
-//   | IMAGE_FACE_IMAGE              |
-
+//	| media_type                    |
+//	|-------------------------------|
+//	| IMAGE_PROFILE_PICTURE         |
+//	| IMAGE_DRIVERS_LICENSE_FRONT   |
+//	| IMAGE_DRIVERS_LICENSE_BACK    |
+//	| IMAGE_PASSPORT_FRONT          |
+//	| IMAGE_ID_CARD_FRONT           |
+//	| IMAGE_ID_CARD_BACK            |
+//	| IMAGE_FACE_IMAGE              |
 func (s *casesAPI) LinkMediaToCase(ctx context.Context, request operations.LinkMediaToCaseRequest) (*operations.LinkMediaToCaseResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/cases/{unit21_id}/link-media", request, nil)
@@ -274,6 +297,8 @@ func (s *casesAPI) LinkMediaToCase(ctx context.Context, request operations.LinkM
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -286,7 +311,13 @@ func (s *casesAPI) LinkMediaToCase(ctx context.Context, request operations.LinkM
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -300,7 +331,7 @@ func (s *casesAPI) LinkMediaToCase(ctx context.Context, request operations.LinkM
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -320,34 +351,29 @@ func (s *casesAPI) LinkMediaToCase(ctx context.Context, request operations.LinkM
 //
 // To narrow down your case search, we provide filter parameters to this endpoint. Note that all list inputs function as an "or" filter, as in any one of the values must match the selected case(s):
 //
-//
-//   | Field                   | Type        | Description                                                                                                       |
-//   | ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
-//   | `created_after`         | Numeric     | Cases created on or after this unix timestamp                                                                     |
-//   | `created_before`        | Numeric     | Cases created before this unix timestamp                                                                          |
-//   | `dispositions`          | String[]    | List of case disposition states (defined on an integration basis)                                                 |
-//   | `dispositioned_after`   | Numeric     | Cases with a disposition most recently updated after this unix timestamp                                          |
-//   | `dispositioned_before`  | Numeric     | Cases with a disposition most recently updated before this unix timestamp                                         |
-//   | `dispositioned_by`      | String[]    | List of agent emails. Returns alerts with a disposition most recently changed by agents in the list               |
-//   | `rules`                 | Numeric[]   | List of Unit21 rule ids that are associated with the case                                                         |
-//   | `associated_entities`   | Numeric[]   | List of Unit21 entity ids associated with this case                                                               |
-//   | `associated_events`     | Numeric[]   | List of Unit21 event ids associated with this case                                                                |
-//   | `associated_alerts`     | Numeric[]   | List of Unit21 alert ids associated with this case                                                                |
-//   | `sources`               | String[]    | Must be list of alert sources: `INTERNAL`, `EXTERNAL`                                                             |
-//   | `statuses`              | String[]    | Must be list of alert statuses: `OPEN`, `CLOSED`                                                                  |
-//   | `tag_filters`           | String[]    | List of string tags (`key:value`) or keys to associate this case with (e.g. `case_type:high_velocity` or `case_type`). If only the key is provided, we will match against all tags with that key        |
-//   | `limit`                 | Numeric     | A limit on the number of objects to be returned. Limit can range between 1 and 50, and the default is 10          |
-//   | `offset`                | Numeric     | The offset for pagination. Default is 1                                                                           |
-//   | `options`               | Object      | Options for the data included in the returned cases. Removing unneeded options can improve response speed         |
-//
+//	| Field                   | Type        | Description                                                                                                       |
+//	| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+//	| `created_after`         | Numeric     | Cases created on or after this unix timestamp                                                                     |
+//	| `created_before`        | Numeric     | Cases created before this unix timestamp                                                                          |
+//	| `dispositions`          | String[]    | List of case disposition states (defined on an integration basis)                                                 |
+//	| `dispositioned_after`   | Numeric     | Cases with a disposition most recently updated after this unix timestamp                                          |
+//	| `dispositioned_before`  | Numeric     | Cases with a disposition most recently updated before this unix timestamp                                         |
+//	| `dispositioned_by`      | String[]    | List of agent emails. Returns alerts with a disposition most recently changed by agents in the list               |
+//	| `rules`                 | Numeric[]   | List of Unit21 rule ids that are associated with the case                                                         |
+//	| `associated_entities`   | Numeric[]   | List of Unit21 entity ids associated with this case                                                               |
+//	| `associated_events`     | Numeric[]   | List of Unit21 event ids associated with this case                                                                |
+//	| `associated_alerts`     | Numeric[]   | List of Unit21 alert ids associated with this case                                                                |
+//	| `sources`               | String[]    | Must be list of alert sources: `INTERNAL`, `EXTERNAL`                                                             |
+//	| `statuses`              | String[]    | Must be list of alert statuses: `OPEN`, `CLOSED`                                                                  |
+//	| `tag_filters`           | String[]    | List of string tags (`key:value`) or keys to associate this case with (e.g. `case_type:high_velocity` or `case_type`). If only the key is provided, we will match against all tags with that key        |
+//	| `limit`                 | Numeric     | A limit on the number of objects to be returned. Limit can range between 1 and 50, and the default is 10          |
+//	| `offset`                | Numeric     | The offset for pagination. Default is 1                                                                           |
+//	| `options`               | Object      | Options for the data included in the returned cases. Removing unneeded options can improve response speed         |
 //
 // The `total_count` field contains the total number of case where the  `response_count` field contains the number of cases included in the response.
 //
 // Follow the links for more information:
 //   - [Endpoint options](https://docs.unit21.ai/reference/endpoint-options)
-//
-//
-
 func (s *casesAPI) ListCases(ctx context.Context, request operations.ListCasesRequestBody) (*operations.ListCasesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/cases/list"
@@ -361,6 +387,8 @@ func (s *casesAPI) ListCases(ctx context.Context, request operations.ListCasesRe
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -373,7 +401,13 @@ func (s *casesAPI) ListCases(ctx context.Context, request operations.ListCasesRe
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -387,7 +421,7 @@ func (s *casesAPI) ListCases(ctx context.Context, request operations.ListCasesRe
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ListResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -401,7 +435,6 @@ func (s *casesAPI) ListCases(ctx context.Context, request operations.ListCasesRe
 // UpdateCase - Update case
 // Update a case through its `unit21_id`. ONLY EXTERNAL CASES CAN BE UPDATED!
 //
-//
 // Updating a case has no required fields. You MAY send any subset of the fields that the `cases/create` endpoint accepts.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the case is first created.
@@ -414,14 +447,12 @@ func (s *casesAPI) ListCases(ctx context.Context, request operations.ListCasesRe
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 //
-//
 // The response will consist of the following fields:
 //
-//   | Field                    | Type     | Description                                          |
-//   |--------------------------|----------|------------------------------------------------------|
-//   | `case_id`	               | String   | 	Unique identifier of the case on your platform     |
-//   | `previously_existed`	   | Boolean  | 	If entity (with the same `case_id`) already exists |
-
+//	| Field                    | Type     | Description                                          |
+//	|--------------------------|----------|------------------------------------------------------|
+//	| `case_id`	               | String   | 	Unique identifier of the case on your platform     |
+//	| `previously_existed`	   | Boolean  | 	If entity (with the same `case_id`) already exists |
 func (s *casesAPI) UpdateCase(ctx context.Context, request operations.UpdateCaseRequest) (*operations.UpdateCaseResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/cases/{unit21_id}/update", request, nil)
@@ -438,6 +469,8 @@ func (s *casesAPI) UpdateCase(ctx context.Context, request operations.UpdateCase
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -450,7 +483,13 @@ func (s *casesAPI) UpdateCase(ctx context.Context, request operations.UpdateCase
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -464,7 +503,7 @@ func (s *casesAPI) UpdateCase(ctx context.Context, request operations.UpdateCase
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

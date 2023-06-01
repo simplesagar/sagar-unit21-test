@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -45,15 +47,13 @@ func newBlacklistsAPI(defaultClient, securityClient HTTPClient, serverURL, langu
 //
 // The response will consist of the following fields:
 //
-//   | Type       | Description                                                              | Example                           |
-//   |------------|--------------------------------------------------------------------------|-----------------------------------|
-//   | `STRING`	 | Plain strings to match against any text-type field.                      | 		"blacklist_value": "abcde"    |
-//   | `IP_INET`	 | IPv4 or IPv6 IP addresses to blacklist.                                  | 	"ip_address": "255.255.255.255" |
-//   | `IP_CIDR`	 | Classless Inter-Domain Routing (CIDR) [notation](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation) IP address ranges to blacklist.  | 	"cidr": "255.255.255.255/32" |
-//   | `USER`	   | 	Series of fields that a Unit21 user entity will be matched against.     | 	user_data object                |
-//   | `BUSINESS` | Series of fields that a Unit21 business entity will be matched against.  | 	business_data object            |
-//
-
+//	| Type       | Description                                                              | Example                           |
+//	|------------|--------------------------------------------------------------------------|-----------------------------------|
+//	| `STRING`	 | Plain strings to match against any text-type field.                      | 		"blacklist_value": "abcde"    |
+//	| `IP_INET`	 | IPv4 or IPv6 IP addresses to blacklist.                                  | 	"ip_address": "255.255.255.255" |
+//	| `IP_CIDR`	 | Classless Inter-Domain Routing (CIDR) [notation](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation) IP address ranges to blacklist.  | 	"cidr": "255.255.255.255/32" |
+//	| `USER`	   | 	Series of fields that a Unit21 user entity will be matched against.     | 	user_data object                |
+//	| `BUSINESS` | Series of fields that a Unit21 business entity will be matched against.  | 	business_data object            |
 func (s *blacklistsAPI) AddBlacklistValues(ctx context.Context, request operations.AddBlacklistValuesRequest) (*operations.AddBlacklistValuesResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/blacklists/{unit21_id}/add-values", request, nil)
@@ -70,6 +70,8 @@ func (s *blacklistsAPI) AddBlacklistValues(ctx context.Context, request operatio
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -82,7 +84,13 @@ func (s *blacklistsAPI) AddBlacklistValues(ctx context.Context, request operatio
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -103,12 +111,11 @@ func (s *blacklistsAPI) AddBlacklistValues(ctx context.Context, request operatio
 //
 // Unit21 currently supports 5 types of blacklists:
 //
-//   * `STRING`: Plain strings to match against any text-type field.
-//   * `IP_INET`: IPv4 or IPv6 IP addresses to blacklist.
-//   * `IP_CIDR`: [Classless Inter-Domain Routing (CIDR) notation IP address ranges](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation) to blacklist,
-//   * `USER`: Series of fields that a Unit21 user entity will be matched against.
-//   * `BUSINESS`: Series of fields that a Unit21 business entity will be matched against.
-//
+//   - `STRING`: Plain strings to match against any text-type field.
+//   - `IP_INET`: IPv4 or IPv6 IP addresses to blacklist.
+//   - `IP_CIDR`: [Classless Inter-Domain Routing (CIDR) notation IP address ranges](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation) to blacklist,
+//   - `USER`: Series of fields that a Unit21 user entity will be matched against.
+//   - `BUSINESS`: Series of fields that a Unit21 business entity will be matched against.
 //
 // If the `/blacklists/create` API is called multiple times, it will create a new blacklist each time.  This endpoint does not support updates/upserts.
 //
@@ -116,11 +123,9 @@ func (s *blacklistsAPI) AddBlacklistValues(ctx context.Context, request operatio
 //
 // The response will consist of the following fields:
 //
-//   | Field           | Type     | Description                                           |
-//   |-----------------|----------|-------------------------------------------------------|
-//   | `blacklist_id`  | String   | 	Unique identifier of the entity on your platform     |
-//
-
+//	| Field           | Type     | Description                                           |
+//	|-----------------|----------|-------------------------------------------------------|
+//	| `blacklist_id`  | String   | 	Unique identifier of the entity on your platform     |
 func (s *blacklistsAPI) CreateBlacklist(ctx context.Context, request shared.CreateBlacklist) (*operations.CreateBlacklistResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/blacklists/create"
@@ -137,6 +142,8 @@ func (s *blacklistsAPI) CreateBlacklist(ctx context.Context, request shared.Crea
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -149,7 +156,13 @@ func (s *blacklistsAPI) CreateBlacklist(ctx context.Context, request shared.Crea
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -163,7 +176,7 @@ func (s *blacklistsAPI) CreateBlacklist(ctx context.Context, request shared.Crea
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -182,8 +195,6 @@ func (s *blacklistsAPI) CreateBlacklist(ctx context.Context, request shared.Crea
 // * `offset` indicates the offset for pagination. An `offset` value of 1 starts with the environment's first record.
 //
 // The `total_count` field contains the total number of blacklists where the  `response_count` field contains the number of blacklists included in the response.
-//
-
 func (s *blacklistsAPI) ListBlacklists(ctx context.Context, request shared.ListRequest) (*operations.ListBlacklistsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/blacklists/list"
@@ -200,6 +211,8 @@ func (s *blacklistsAPI) ListBlacklists(ctx context.Context, request shared.ListR
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -212,7 +225,13 @@ func (s *blacklistsAPI) ListBlacklists(ctx context.Context, request shared.ListR
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -226,7 +245,7 @@ func (s *blacklistsAPI) ListBlacklists(ctx context.Context, request shared.ListR
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.ListBlacklists200ApplicationJSON
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

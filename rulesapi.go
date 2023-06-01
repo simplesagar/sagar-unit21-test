@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -41,8 +43,6 @@ func newRulesAPI(defaultClient, securityClient HTTPClient, serverURL, language, 
 // Either the `filters` or the list of `rule IDs` are required for the export.
 //
 // Custom data filters are not supported for bulk exports at this time.
-//
-
 func (s *rulesAPI) ExportRules(ctx context.Context, request operations.ExportRulesRequestBody) (*operations.ExportRulesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/rules/bulk-export"
@@ -56,6 +56,8 @@ func (s *rulesAPI) ExportRules(ctx context.Context, request operations.ExportRul
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -68,7 +70,13 @@ func (s *rulesAPI) ExportRules(ctx context.Context, request operations.ExportRul
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -91,7 +99,6 @@ func (s *rulesAPI) ExportRules(ctx context.Context, request operations.ExportRul
 // * `offset` indicates the offset for pagination. An `offset` value of 1 starts with the environment's first record. The offset is relative to the number of pages (not the total count of objects).
 //
 // The `total_count` field contains the total number of rules where the  `response_count` field contains the number of rules included in the response.
-
 func (s *rulesAPI) ListRules(ctx context.Context, request shared.ListRequest) (*operations.ListRulesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/rules/list"
@@ -108,6 +115,8 @@ func (s *rulesAPI) ListRules(ctx context.Context, request shared.ListRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -120,7 +129,13 @@ func (s *rulesAPI) ListRules(ctx context.Context, request shared.ListRequest) (*
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -158,7 +173,6 @@ func (s *rulesAPI) ListRules(ctx context.Context, request shared.ListRequest) (*
 // Returns all data objects belonging to a single rule.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the rule is first created.
-
 func (s *rulesAPI) ReadOneRule(ctx context.Context, request operations.ReadOneRuleRequest) (*operations.ReadOneRuleResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/rules/{unit21_id}", request, nil)
@@ -170,6 +184,8 @@ func (s *rulesAPI) ReadOneRule(ctx context.Context, request operations.ReadOneRu
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -180,7 +196,13 @@ func (s *rulesAPI) ReadOneRule(ctx context.Context, request operations.ReadOneRu
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -194,7 +216,7 @@ func (s *rulesAPI) ReadOneRule(ctx context.Context, request operations.ReadOneRu
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

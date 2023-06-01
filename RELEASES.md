@@ -23,3 +23,27 @@ Based on:
 - Speakeasy CLI 1.27.0 (2.24.0) https://github.com/speakeasy-api/speakeasy
 ### Releases
 - [Go v1.2.0] https://github.com/simplesagar/sagar-unit21-test/releases/tag/v1.2.0 - .
+
+## 2023-05-16 00:16:46
+### Changes
+Based on:
+- OpenAPI Doc 1.0 https://prod.speakeasyapi.dev/v1/apis/unit21/version/1.0.0/schema/download
+- Speakeasy CLI 1.32.0 (2.28.0) https://github.com/speakeasy-api/speakeasy
+### Releases
+- [Go v0.1.0] https://github.com/simplesagar/sagar-unit21-test/releases/tag/v0.1.0 - .
+
+## 2023-05-19 00:16:49
+### Changes
+Based on:
+- OpenAPI Doc 1.0 https://prod.speakeasyapi.dev/v1/apis/unit21/version/1.0.0/schema/download
+- Speakeasy CLI 1.35.0 (2.31.0) https://github.com/speakeasy-api/speakeasy
+### Releases
+- [Go v0.2.0] https://github.com/simplesagar/sagar-unit21-test/releases/tag/v0.2.0 - .
+
+## 2023-06-01 00:23:27
+### Changes
+Based on:
+- OpenAPI Doc 1.0 https://prod.speakeasyapi.dev/v1/apis/unit21/version/1.0.0/schema/download
+- Speakeasy CLI 1.40.2 (2.34.2) https://github.com/speakeasy-api/speakeasy
+### Releases
+- [Go v0.3.0] https://github.com/simplesagar/sagar-unit21-test/releases/tag/v0.3.0 - .

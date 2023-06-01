@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -41,7 +43,6 @@ func newEntitiesAPI(defaultClient, securityClient HTTPClient, serverURL, languag
 // If we do not find any instruments with a corresponding `instrument_id` in our system, we will create a [placeholder](https://docs.unit21.ai/reference/placeholder-objects) for it.
 //
 // Instrument details can then be supplemented through the `/instruments/create` or `/instruments/update` endpoints.
-
 func (s *entitiesAPI) AddInstruments(ctx context.Context, request operations.AddInstrumentsRequest) (*operations.AddInstrumentsResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/add-instruments", request, nil)
@@ -58,6 +59,8 @@ func (s *entitiesAPI) AddInstruments(ctx context.Context, request operations.Add
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -70,7 +73,13 @@ func (s *entitiesAPI) AddInstruments(ctx context.Context, request operations.Add
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -101,7 +110,7 @@ func (s *entitiesAPI) AddInstruments(ctx context.Context, request operations.Add
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ErrorResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -136,8 +145,6 @@ func (s *entitiesAPI) AddInstruments(ctx context.Context, request operations.Add
 //   - [Custom data](https://docs.unit21.ai/reference/best-practices-for-custom-data)
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
-//
-
 func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEntityRequest) (*operations.CreateEntityResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/entities/create"
@@ -151,6 +158,8 @@ func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEnt
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -163,7 +172,13 @@ func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEnt
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -177,7 +192,7 @@ func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEnt
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.CreateEntityResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -187,7 +202,7 @@ func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEnt
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.CreateEntityMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -215,7 +230,6 @@ func (s *entitiesAPI) CreateEntity(ctx context.Context, request shared.CreateEnt
 
 // DelMediaEntity - Delete entity media
 // Deletes rich media objects (images, videos, etc.) to an existing entity.
-
 func (s *entitiesAPI) DelMediaEntity(ctx context.Context, request operations.DelMediaEntityRequest) (*operations.DelMediaEntityResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/delete-all-media", request, nil)
@@ -227,6 +241,8 @@ func (s *entitiesAPI) DelMediaEntity(ctx context.Context, request operations.Del
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -237,7 +253,13 @@ func (s *entitiesAPI) DelMediaEntity(ctx context.Context, request operations.Del
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -268,7 +290,7 @@ func (s *entitiesAPI) DelMediaEntity(ctx context.Context, request operations.Del
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ErrorResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -287,8 +309,6 @@ func (s *entitiesAPI) DelMediaEntity(ctx context.Context, request operations.Del
 // Either the `filters` or the list of `entity IDs` are required for the export.
 //
 // Custom data filters are not supported for bulk exports at this time.
-//
-
 func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.ExportEntitiesRequestBody) (*operations.ExportEntitiesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/entities/bulk-export"
@@ -302,6 +322,8 @@ func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.Exp
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -314,7 +336,13 @@ func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.Exp
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -328,7 +356,7 @@ func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.Exp
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.MessageResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -338,7 +366,7 @@ func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.Exp
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.ExportEntitiesMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -368,7 +396,6 @@ func (s *entitiesAPI) ExportEntities(ctx context.Context, request operations.Exp
 // Returns all data objects belonging to a single entity, including `general_data`, `document_data`, etc.
 //
 // This endpoint requires the `entity_id` which is a unique ID created by your organization to identify the entity. The `org_name` is your Unit21 appointed organization name such as `google` or `acme`.
-
 func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntityRequest) (*operations.GetEntityResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}", request, nil)
@@ -380,6 +407,8 @@ func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntit
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -390,7 +419,13 @@ func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntit
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -404,7 +439,7 @@ func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntit
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.EntityList
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -414,7 +449,7 @@ func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntit
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.GetEntityMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -450,44 +485,46 @@ func (s *entitiesAPI) GetEntity(ctx context.Context, request operations.GetEntit
 // **Form-data** sent to this endpoint must use the key `media_key` and the `value` as the media file.  If you wish to provide optional information, use the `media_key` and provide stringified JSON data as the value.  There are no required fields in each media file's supplementary form data. However, if a recognized `media_type` value is provided,  the Unit21 system will be able to use the media object for purposes such as document verification.
 //
 // ```
-//   --form 'document_front=@/src/103031/images/document_front.jpg' \
-//   --form 'document_front={"media_type": "IMAGE_ID_CARD_FRONT", "source": "passport_app", "timestamp": 1572673229}'
+//
+//	--form 'document_front=@/src/103031/images/document_front.jpg' \
+//	--form 'document_front={"media_type": "IMAGE_ID_CARD_FRONT", "source": "passport_app", "timestamp": 1572673229}'
+//
 // ```
 //
 // **Base64** encoded media objects must follow the format:
 //
 // ```json
-//   {
-//     "media": "iVBORw0KGgoAAAANSUhEUgAAAQMAAADCCAYAAABNEqduAAAgAElEQVR4Aey9CbgmV1Xv...",
-//     "name": "Drivers_License.png",
-//     "media_type": "IMAGE_DRIVERS_LICENSE_FRONT",
-//     "custom_data": {
-//       "internal_notes": "Reviewed by Mitchell on 31 June 2019",
-//       "reviewers": 3,
-//       "login": 1638384860,
-//       "timestamp": "2012-03-40 05:12:41.000Z",
-//       "daily_email": true,
-//       "employees": ["John", "Anna", "Peter"],
-//       "socure_device_session_id": "12121212121212112"
-//     }
-//   }
+//
+//	{
+//	  "media": "iVBORw0KGgoAAAANSUhEUgAAAQMAAADCCAYAAABNEqduAAAgAElEQVR4Aey9CbgmV1Xv...",
+//	  "name": "Drivers_License.png",
+//	  "media_type": "IMAGE_DRIVERS_LICENSE_FRONT",
+//	  "custom_data": {
+//	    "internal_notes": "Reviewed by Mitchell on 31 June 2019",
+//	    "reviewers": 3,
+//	    "login": 1638384860,
+//	    "timestamp": "2012-03-40 05:12:41.000Z",
+//	    "daily_email": true,
+//	    "employees": ["John", "Anna", "Peter"],
+//	    "socure_device_session_id": "12121212121212112"
+//	  }
+//	}
+//
 // ```
 //
-// `media` and `name` are the only required fields for each media object. The `name`` must include the file extension such a `File.pdf`. Supplementary form data is sent through the optional `custom_data` object.
+// `media` and `name` are the only required fields for each media object. The `name“ must include the file extension such a `File.pdf`. Supplementary form data is sent through the optional `custom_data` object.
 //
 // For verification purposes, recognized values of `media_type` are:
 //
-//
-//   | media_type                  |
-//   |-----------------------------|
-//   | IMAGE_PROFILE_PICTURE       |
-//   | IMAGE_DRIVERS_LICENSE_FRONT |
-//   | IMAGE_DRIVERS_LICENSE_BACK  |
-//   | IMAGE_PASSPORT_FRONT        |
-//   | IMAGE_ID_CARD_FRONT         |
-//   | IMAGE_ID_CARD_BACK          |
-//   | IMAGE_FACE_IMAGE            |
-
+//	| media_type                  |
+//	|-----------------------------|
+//	| IMAGE_PROFILE_PICTURE       |
+//	| IMAGE_DRIVERS_LICENSE_FRONT |
+//	| IMAGE_DRIVERS_LICENSE_BACK  |
+//	| IMAGE_PASSPORT_FRONT        |
+//	| IMAGE_ID_CARD_FRONT         |
+//	| IMAGE_ID_CARD_BACK          |
+//	| IMAGE_FACE_IMAGE            |
 func (s *entitiesAPI) LinkMediaToEntity(ctx context.Context, request operations.LinkMediaToEntityRequest) (*operations.LinkMediaToEntityResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/link-media", request, nil)
@@ -504,6 +541,8 @@ func (s *entitiesAPI) LinkMediaToEntity(ctx context.Context, request operations.
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -516,7 +555,13 @@ func (s *entitiesAPI) LinkMediaToEntity(ctx context.Context, request operations.
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -547,7 +592,7 @@ func (s *entitiesAPI) LinkMediaToEntity(ctx context.Context, request operations.
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ErrorResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -570,7 +615,6 @@ func (s *entitiesAPI) LinkMediaToEntity(ctx context.Context, request operations.
 // * `alert_id` is a filter. Only entities with the associated alert ID will be shown.
 //
 // The `total_count` field contains the total number of entities where the  `response_count` field contains the number of entities included in the response.
-
 func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntityRequest) (*operations.ListEntitiesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/entities/list"
@@ -584,6 +628,8 @@ func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntit
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -596,7 +642,13 @@ func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntit
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -610,7 +662,7 @@ func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntit
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ListEntityResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -620,7 +672,7 @@ func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntit
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.ListEntitiesMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -662,7 +714,6 @@ func (s *entitiesAPI) ListEntities(ctx context.Context, request shared.ListEntit
 //   - [Custom data](https://docs.unit21.ai/reference/best-practices-for-custom-data)
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
-
 func (s *entitiesAPI) UpdateEntity(ctx context.Context, request operations.UpdateEntityRequest) (*operations.UpdateEntityResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/entities/{entity_id}/update", request, nil)
@@ -682,6 +733,8 @@ func (s *entitiesAPI) UpdateEntity(ctx context.Context, request operations.Updat
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -694,7 +747,13 @@ func (s *entitiesAPI) UpdateEntity(ctx context.Context, request operations.Updat
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -708,7 +767,7 @@ func (s *entitiesAPI) UpdateEntity(ctx context.Context, request operations.Updat
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.UpdateEntityResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -718,7 +777,7 @@ func (s *entitiesAPI) UpdateEntity(ctx context.Context, request operations.Updat
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.UpdateEntityMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

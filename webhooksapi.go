@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"unit/pkg/models/operations"
 	"unit/pkg/utils"
@@ -35,7 +37,6 @@ func newWebhooksAPI(defaultClient, securityClient HTTPClient, serverURL, languag
 // Change the URL of an existing webhook from Unit21.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the webhook is first created.
-
 func (s *webhooksAPI) UpdateWebhook(ctx context.Context, request operations.UpdateWebhookRequest) (*operations.UpdateWebhookResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/webhooks/{unit21_id}/update", request, nil)
@@ -52,6 +53,8 @@ func (s *webhooksAPI) UpdateWebhook(ctx context.Context, request operations.Upda
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -64,7 +67,13 @@ func (s *webhooksAPI) UpdateWebhook(ctx context.Context, request operations.Upda
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 

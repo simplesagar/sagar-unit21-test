@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -41,8 +43,6 @@ func newSarsAPI(defaultClient, securityClient HTTPClient, serverURL, language, s
 // Either the `filters` or the list of `sar IDs` are required for the export.
 //
 // Custom data filters are not supported for bulk exports at this time.
-//
-
 func (s *sarsAPI) ExportSars(ctx context.Context, request operations.ExportSarsRequestBody) (*operations.ExportSarsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/sars/bulk-export"
@@ -56,6 +56,8 @@ func (s *sarsAPI) ExportSars(ctx context.Context, request operations.ExportSarsR
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -68,7 +70,13 @@ func (s *sarsAPI) ExportSars(ctx context.Context, request operations.ExportSarsR
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -93,23 +101,19 @@ func (s *sarsAPI) ExportSars(ctx context.Context, request operations.ExportSarsR
 //
 // To narrow down your sars search, we provide filter parameters to this endpoint. Note that all list inputs function as an "or" filter, as in any one of the values must match the selected sar(s):
 //
-//
-//   | Field                   | Type        | Description                                                                                                       |
-//   | ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
-//   | `created_after`         | Numeric     | SARs created on or after this unix timestamp                                                                      |
-//   | `created_before`        | Numeric     | SARs created before this unix timestamp                                                                           |
-//   | `tag_filters`           | String[]    | List of string tags (`key:value`) or keys to associate this SARs with (e.g. `sars_type:high_velocity` or `sars_type`). If only the key is provided, we will match against all tags with that key        |
-//   | `limit`                 | Numeric     | A limit on the number of objects to be returned. Limit can range between 1 and 50, and the default is 10          |
-//   | `offset`                | Numeric     | The offset for pagination. Default is 1                                                                           |
-//   | `options`               | Object      | Options for the data included in the returned SARs. Removing unneeded options can improve response speed          |
-//
+//	| Field                   | Type        | Description                                                                                                       |
+//	| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+//	| `created_after`         | Numeric     | SARs created on or after this unix timestamp                                                                      |
+//	| `created_before`        | Numeric     | SARs created before this unix timestamp                                                                           |
+//	| `tag_filters`           | String[]    | List of string tags (`key:value`) or keys to associate this SARs with (e.g. `sars_type:high_velocity` or `sars_type`). If only the key is provided, we will match against all tags with that key        |
+//	| `limit`                 | Numeric     | A limit on the number of objects to be returned. Limit can range between 1 and 50, and the default is 10          |
+//	| `offset`                | Numeric     | The offset for pagination. Default is 1                                                                           |
+//	| `options`               | Object      | Options for the data included in the returned SARs. Removing unneeded options can improve response speed          |
 //
 // The `total_count` field contains the total number of sars where the  `response_count` field contains the number of sars included in the response.
 //
 // Follow the links for more information:
 //   - [Endpoint options](https://docs.unit21.ai/reference/endpoint-options)
-//
-
 func (s *sarsAPI) ListSars(ctx context.Context, request shared.ListRequest) (*operations.ListSarsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/sars/list"
@@ -126,6 +130,8 @@ func (s *sarsAPI) ListSars(ctx context.Context, request shared.ListRequest) (*op
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -138,7 +144,13 @@ func (s *sarsAPI) ListSars(ctx context.Context, request shared.ListRequest) (*op
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -176,7 +188,6 @@ func (s *sarsAPI) ListSars(ctx context.Context, request shared.ListRequest) (*op
 // Returns all data objects belonging to a single SAR.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the sar is first created.
-
 func (s *sarsAPI) ReadOneSar(ctx context.Context, request operations.ReadOneSarRequest) (*operations.ReadOneSarResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/sars/{unit21_id}", request, nil)
@@ -188,6 +199,8 @@ func (s *sarsAPI) ReadOneSar(ctx context.Context, request operations.ReadOneSarR
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -198,7 +211,13 @@ func (s *sarsAPI) ReadOneSar(ctx context.Context, request operations.ReadOneSarR
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -212,7 +231,7 @@ func (s *sarsAPI) ReadOneSar(ctx context.Context, request operations.ReadOneSarR
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

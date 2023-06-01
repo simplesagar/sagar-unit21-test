@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -50,9 +52,6 @@ func newInstrumentsAPI(defaultClient, securityClient HTTPClient, serverURL, lang
 //   - [Custom data](https://docs.unit21.ai/reference/best-practices-for-custom-data)
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
-//
-//
-
 func (s *instrumentsAPI) CreateInstrument(ctx context.Context, request shared.CreateInstrumentRequest) (*operations.CreateInstrumentResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/instruments/create"
@@ -66,6 +65,8 @@ func (s *instrumentsAPI) CreateInstrument(ctx context.Context, request shared.Cr
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -78,7 +79,13 @@ func (s *instrumentsAPI) CreateInstrument(ctx context.Context, request shared.Cr
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -92,7 +99,7 @@ func (s *instrumentsAPI) CreateInstrument(ctx context.Context, request shared.Cr
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.CreateInstrumentResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -102,7 +109,7 @@ func (s *instrumentsAPI) CreateInstrument(ctx context.Context, request shared.Cr
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.CreateInstrumentMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -136,8 +143,6 @@ func (s *instrumentsAPI) CreateInstrument(ctx context.Context, request shared.Cr
 // Either the `filters` or the list of `instrument IDs` are required for the export.
 //
 // Custom data filters are not supported for bulk exports at this time.
-//
-
 func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operations.ExportInstrumentsRequestBody) (*operations.ExportInstrumentsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/instruments/bulk-export"
@@ -151,6 +156,8 @@ func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operatio
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -163,7 +170,13 @@ func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operatio
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -177,7 +190,7 @@ func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operatio
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.BulkExportResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -187,7 +200,7 @@ func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operatio
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.ExportInstrumentsMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -217,7 +230,6 @@ func (s *instrumentsAPI) ExportInstruments(ctx context.Context, request operatio
 // Returns all data objects belonging to a single instrument.
 //
 // This endpoint requires the `instrument_id` which is a unique ID created by your organization to identify the instrument. The `org_name` is your Unit21 appointed organization name such as `google` or `acme`.
-
 func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.GetInstrumentRequest) (*operations.GetInstrumentResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/instruments/{instrument_id}", request, nil)
@@ -229,6 +241,8 @@ func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.G
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -239,7 +253,13 @@ func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.G
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -253,7 +273,7 @@ func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.G
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.InstrumentList
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -263,7 +283,7 @@ func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.G
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.GetInstrumentMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -295,8 +315,6 @@ func (s *instrumentsAPI) GetInstrument(ctx context.Context, request operations.G
 // * `alert_id` is a filter. Only instruments with the associated alert ID will be shown.
 //
 // The `total_count` field contains the total number of instruments where the  `response_count` field contains the number of instruments included in the response.
-//
-
 func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.ListAlertRequest) (*operations.ListInstrumentsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/instruments/list"
@@ -310,6 +328,8 @@ func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.Lis
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -322,7 +342,13 @@ func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.Lis
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -336,7 +362,7 @@ func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.Lis
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ListInstrumentResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -346,7 +372,7 @@ func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.Lis
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.ListInstrumentsMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -387,7 +413,6 @@ func (s *instrumentsAPI) ListInstruments(ctx context.Context, request shared.Lis
 //   - [Custom data](https://docs.unit21.ai/reference/best-practices-for-custom-data)
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
-
 func (s *instrumentsAPI) UpdateInstrument(ctx context.Context, request operations.UpdateInstrumentRequest) (*operations.UpdateInstrumentResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/{org_name}/instruments/{instrument_id}/update", request, nil)
@@ -404,6 +429,8 @@ func (s *instrumentsAPI) UpdateInstrument(ctx context.Context, request operation
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json;q=1, application/json;q=0")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -416,7 +443,13 @@ func (s *instrumentsAPI) UpdateInstrument(ctx context.Context, request operation
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -430,7 +463,7 @@ func (s *instrumentsAPI) UpdateInstrument(ctx context.Context, request operation
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.UpdateInstrumentResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -440,7 +473,7 @@ func (s *instrumentsAPI) UpdateInstrument(ctx context.Context, request operation
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.UpdateInstrumentMessageGeneralResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

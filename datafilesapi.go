@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -40,8 +42,6 @@ func newDatafilesAPI(defaultClient, securityClient HTTPClient, serverURL, langua
 // Use `--form datafile` to specify the datafile, and `run_rules` to configure whether to run Unit21 rules on the datafile after it's processed.
 //
 // We support JSON format only.
-//
-
 func (s *datafilesAPI) CreateDatafiles(ctx context.Context, request operations.CreateDatafilesRequestBody) (*operations.CreateDatafilesResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/datafiles/create"
@@ -58,6 +58,8 @@ func (s *datafilesAPI) CreateDatafiles(ctx context.Context, request operations.C
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -70,7 +72,13 @@ func (s *datafilesAPI) CreateDatafiles(ctx context.Context, request operations.C
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -90,7 +98,6 @@ func (s *datafilesAPI) CreateDatafiles(ctx context.Context, request operations.C
 // Get details about a datafile.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the datafile is first created.
-
 func (s *datafilesAPI) GetDatafileByUnit21ID(ctx context.Context, request operations.GetDatafileByUnit21IDRequest) (*operations.GetDatafileByUnit21IDResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/datafiles/{unit21_id}", request, nil)
@@ -102,6 +109,8 @@ func (s *datafilesAPI) GetDatafileByUnit21ID(ctx context.Context, request operat
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -112,7 +121,13 @@ func (s *datafilesAPI) GetDatafileByUnit21ID(ctx context.Context, request operat
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -136,8 +151,6 @@ func (s *datafilesAPI) GetDatafileByUnit21ID(ctx context.Context, request operat
 // The total number of items can be retrieved from the GET endpoint.
 //
 // Please note that an empty response `{}` will be returned if the datafile is not yet processed.
-//
-
 func (s *datafilesAPI) GetDatafileMappings(ctx context.Context, request operations.GetDatafileMappingsRequest) (*operations.GetDatafileMappingsResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/datafiles/{unit21_id}/mappings", request, nil)
@@ -154,6 +167,8 @@ func (s *datafilesAPI) GetDatafileMappings(ctx context.Context, request operatio
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -166,7 +181,13 @@ func (s *datafilesAPI) GetDatafileMappings(ctx context.Context, request operatio
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 

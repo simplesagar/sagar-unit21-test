@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -34,7 +36,6 @@ func newAgentsAPI(defaultClient, securityClient HTTPClient, serverURL, language,
 
 // DeactivateAgent - Deactivate an agent
 // Archives an agent so that he/she can no longer log in to the dashboard.
-
 func (s *agentsAPI) DeactivateAgent(ctx context.Context, request operations.DeactivateAgentRequest) (*operations.DeactivateAgentResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/agents/{agent_email}/deactivate", request, nil)
@@ -46,6 +47,8 @@ func (s *agentsAPI) DeactivateAgent(ctx context.Context, request operations.Deac
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -56,7 +59,13 @@ func (s *agentsAPI) DeactivateAgent(ctx context.Context, request operations.Deac
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -70,7 +79,7 @@ func (s *agentsAPI) DeactivateAgent(ctx context.Context, request operations.Deac
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -84,7 +93,6 @@ func (s *agentsAPI) DeactivateAgent(ctx context.Context, request operations.Deac
 // ListAgents - List agents
 // Returns an array of all agents in your organization who are using the environment.
 // There are no options or filters for this endpoint. The request will return ALL agents.
-
 func (s *agentsAPI) ListAgents(ctx context.Context) (*operations.ListAgentsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/agents/list"
@@ -93,6 +101,8 @@ func (s *agentsAPI) ListAgents(ctx context.Context) (*operations.ListAgentsRespo
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -103,7 +113,13 @@ func (s *agentsAPI) ListAgents(ctx context.Context) (*operations.ListAgentsRespo
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 

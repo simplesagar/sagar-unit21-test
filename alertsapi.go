@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -41,13 +43,12 @@ func newAlertsAPI(defaultClient, securityClient HTTPClient, serverURL, language,
 //
 // You can add the following objects to an alert:
 //
-//   | Field                    | Type     | Description                                                                                                           |
-//   |--------------------------|----------|-----------------------------------------------------------------------------------------------------------------------|
-//   | `rules`	                 | String[] | Unique identifier of the rules/triggers/scenarios that triggered this alert                                           |
-//   | `events`	               | Object[] | Transactions affiliated with the alert. Each object must consist of a `event_id` and `event_type` field               |
-//   | `entities`	             | Object[] | Users or businesses affiliated with the alert. Each object must consist of an `entity_id` and `entity_type` field     |
-//   | `instruments`	           | String[] | Unique identifiers of any instruments affiliated with the alert                                                       |
-//
+//	| Field                    | Type     | Description                                                                                                           |
+//	|--------------------------|----------|-----------------------------------------------------------------------------------------------------------------------|
+//	| `rules`	                 | String[] | Unique identifier of the rules/triggers/scenarios that triggered this alert                                           |
+//	| `events`	               | Object[] | Transactions affiliated with the alert. Each object must consist of a `event_id` and `event_type` field               |
+//	| `entities`	             | Object[] | Users or businesses affiliated with the alert. Each object must consist of an `entity_id` and `entity_type` field     |
+//	| `instruments`	           | String[] | Unique identifiers of any instruments affiliated with the alert                                                       |
 //
 // Please note that if `verification_result_id` is included, it will link the entity that is associated  with the verification result with the alert.
 //
@@ -58,16 +59,13 @@ func newAlertsAPI(defaultClient, securityClient HTTPClient, serverURL, language,
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 //
-//
 // The response will consist of the following fields:
 //
-//   | Field                    | Type     | Description                                             |
-//   |--------------------------|----------|---------------------------------------------------------|
-//   | `alert_id`	             | String   | Unique identifier of the alert on your platform         |
-//   | `unit21_id`	             | String   | Internal ID of the alert within Unit21's system         |
-//   | `previously_existed`	   | Boolean  | If alert (with the same `alert_id`) already exists      |
-//
-
+//	| Field                    | Type     | Description                                             |
+//	|--------------------------|----------|---------------------------------------------------------|
+//	| `alert_id`	             | String   | Unique identifier of the alert on your platform         |
+//	| `unit21_id`	             | String   | Internal ID of the alert within Unit21's system         |
+//	| `previously_existed`	   | Boolean  | If alert (with the same `alert_id`) already exists      |
 func (s *alertsAPI) CreateAlert(ctx context.Context, request operations.CreateAlertRules) (*operations.CreateAlertResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/alerts/create"
@@ -84,6 +82,8 @@ func (s *alertsAPI) CreateAlert(ctx context.Context, request operations.CreateAl
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -96,7 +96,13 @@ func (s *alertsAPI) CreateAlert(ctx context.Context, request operations.CreateAl
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -110,7 +116,7 @@ func (s *alertsAPI) CreateAlert(ctx context.Context, request operations.CreateAl
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.CreateAlertResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -129,8 +135,6 @@ func (s *alertsAPI) CreateAlert(ctx context.Context, request operations.CreateAl
 // Either the `filters` or the list of `alert IDs` are required for the export.
 //
 // Custom data filters are not supported for bulk exports at this time.
-//
-
 func (s *alertsAPI) ExportAlerts(ctx context.Context, request operations.ExportAlertsRequestBody) (*operations.ExportAlertsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/alerts/bulk-export"
@@ -144,6 +148,8 @@ func (s *alertsAPI) ExportAlerts(ctx context.Context, request operations.ExportA
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -156,7 +162,13 @@ func (s *alertsAPI) ExportAlerts(ctx context.Context, request operations.ExportA
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -176,7 +188,6 @@ func (s *alertsAPI) ExportAlerts(ctx context.Context, request operations.ExportA
 // Returns all data objects belonging to a single alert.
 //
 // This endpoint requires the `unit21_id` which is a unique ID created by Unit21 when the entity is first created.
-
 func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.GetAlertByUnit21IDRequest) (*operations.GetAlertByUnit21IDResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}", request, nil)
@@ -188,6 +199,8 @@ func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.G
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	client := s.securityClient
 
@@ -198,7 +211,13 @@ func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.G
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -212,7 +231,7 @@ func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.G
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -235,34 +254,37 @@ func (s *alertsAPI) GetAlertByUnit21ID(ctx context.Context, request operations.G
 // **Form-data** sent to this endpoint must use the key `media_key` and the `value` as the media file.  If you wish to provide optional information, use the `media_key` and provide stringified JSON data as the value.  There are no required fields in each media file's supplementary form data. However, if a recognized `media_type` value is provided,  the Unit21 system will be able to use the media object for purposes such as document verification.
 //
 // ```
-//     --form 'document_front=@/src/103031/images/document_front.jpg' \
-//     --form 'document_front={"media_type": "IMAGE_ID_CARD_FRONT", "source": "passport_app", "timestamp": 1572673229}'
+//
+//	--form 'document_front=@/src/103031/images/document_front.jpg' \
+//	--form 'document_front={"media_type": "IMAGE_ID_CARD_FRONT", "source": "passport_app", "timestamp": 1572673229}'
+//
 // ```
 //
 // **Base64** encoded media objects must follow the format:
 //
 // ```json
-//   {
-//     "media": "iVBORw0KGgoAAAANSUhEUgAAAQMAAADCCAYAAABNEqduAAAgAElEQVR4Aey9CbgmV1Xv...",
-//     "name": "Drivers_License.png",
-//     "media_type": "IMAGE_DRIVERS_LICENSE_FRONT"
-//   }
+//
+//	{
+//	  "media": "iVBORw0KGgoAAAANSUhEUgAAAQMAAADCCAYAAABNEqduAAAgAElEQVR4Aey9CbgmV1Xv...",
+//	  "name": "Drivers_License.png",
+//	  "media_type": "IMAGE_DRIVERS_LICENSE_FRONT"
+//	}
+//
 // ```
 //
-// `media` and `name` are the only required fields for each media object. The `name`` must include the file extension such a `File.pdf`. Supplementary form data is sent through the optional `custom_data` object.
+// `media` and `name` are the only required fields for each media object. The `name“ must include the file extension such a `File.pdf`. Supplementary form data is sent through the optional `custom_data` object.
 //
 // Recognized values of `media_type` are:
 //
-//   | media_type                  |
-//   |-----------------------------|
-//   | IMAGE_PROFILE_PICTURE       |
-//   | IMAGE_DRIVERS_LICENSE_FRONT |
-//   | IMAGE_DRIVERS_LICENSE_BACK  |
-//   | IMAGE_PASSPORT_FRONT        |
-//   | IMAGE_ID_CARD_FRONT         |
-//   | IMAGE_ID_CARD_BACK          |
-//   | IMAGE_FACE_IMAGE            |
-
+//	| media_type                  |
+//	|-----------------------------|
+//	| IMAGE_PROFILE_PICTURE       |
+//	| IMAGE_DRIVERS_LICENSE_FRONT |
+//	| IMAGE_DRIVERS_LICENSE_BACK  |
+//	| IMAGE_PASSPORT_FRONT        |
+//	| IMAGE_ID_CARD_FRONT         |
+//	| IMAGE_ID_CARD_BACK          |
+//	| IMAGE_FACE_IMAGE            |
 func (s *alertsAPI) LinkMediaToAlert(ctx context.Context, request operations.LinkMediaToAlertRequest) (*operations.LinkMediaToAlertResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}/link-media", request, nil)
@@ -279,6 +301,8 @@ func (s *alertsAPI) LinkMediaToAlert(ctx context.Context, request operations.Lin
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -291,7 +315,13 @@ func (s *alertsAPI) LinkMediaToAlert(ctx context.Context, request operations.Lin
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -316,36 +346,31 @@ func (s *alertsAPI) LinkMediaToAlert(ctx context.Context, request operations.Lin
 //
 // To narrow down your alert search, we provide filter parameters to this endpoint. Note that all list inputs function as an "or" filter, as in any one of the values must match the selected alert(s):
 //
-//
-//   | Field                   | Type        | Description                                                                                                       |
-//   | ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
-//   | `case_id`               | Numeric     | Only alerts with the associated case ID will be shown.                                                            |
-//   | `types`                 | String[]    | Must be list of alert types: `tm`, `kyc`, `chainalysis`                                                           |
-//   | `created_after`         | Numeric     | Alerts created on or after this unix timestamp                                                                    |
-//   | `created_before`        | Numeric     | Alerts created before this unix timestamp                                                                         |
-//   | `dispositions`          | String[]    | List of alert disposition states (defined on an integration basis)                                                |
-//   | `dispositioned_after`   | Numeric     | Alerts with a disposition most recently updated after this unix timestamp                                         |
-//   | `dispositioned_before`  | Numeric     | Alerts with a disposition most recently updated before this unix timestamp                                        |
-//   | `dispositioned_by`      | String[]    | List of agent emails. Returns alerts with a disposition most recently changed by agents in the list               |
-//   | `rules`                 | Numeric[]   | List of Unit21 rule ids that are associated with the alert                                                        |
-//   | `associated_entities`   | Numeric[]   | List of Unit21 entity ids associated with this alert                                                              |
-//   | `associated_events`     | Numeric[]   | List of Unit21 event ids associated with this alert                                                               |
-//   | `associated_instruments`| Numeric[]   | List of Unit21 instrument ids associated with this alert                                                          |
-//   | `sources`               | String[]    | Must be list of alert sources: `INTERNAL`, `EXTERNAL`                                                             |
-//   | `statuses`              | String[]    | Must be list of alert statuses: `OPEN`, `CLOSED`                                                                  |
-//   | `tag_filters`           | String[]    | List of string tags (`key:value`) or keys to associate this alert with (e.g. `alert_type:high_velocity` or `alert_type`). If only the key is provided, we will match against all tags with that key        |
-//   | `limit`                 | Numeric     | A limit on the number of objects to be returned. Limit can range between 1 and 50, and the default is 10          |
-//   | `offset`                | Numeric     | The offset for pagination. Default is 1                                                                           |
-//   | `options`               | Object      | Options for the data included in the returned alerts. Removing unneeded options can improve response speed        |
-//
+//	| Field                   | Type        | Description                                                                                                       |
+//	| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+//	| `case_id`               | Numeric     | Only alerts with the associated case ID will be shown.                                                            |
+//	| `types`                 | String[]    | Must be list of alert types: `tm`, `kyc`, `chainalysis`                                                           |
+//	| `created_after`         | Numeric     | Alerts created on or after this unix timestamp                                                                    |
+//	| `created_before`        | Numeric     | Alerts created before this unix timestamp                                                                         |
+//	| `dispositions`          | String[]    | List of alert disposition states (defined on an integration basis)                                                |
+//	| `dispositioned_after`   | Numeric     | Alerts with a disposition most recently updated after this unix timestamp                                         |
+//	| `dispositioned_before`  | Numeric     | Alerts with a disposition most recently updated before this unix timestamp                                        |
+//	| `dispositioned_by`      | String[]    | List of agent emails. Returns alerts with a disposition most recently changed by agents in the list               |
+//	| `rules`                 | Numeric[]   | List of Unit21 rule ids that are associated with the alert                                                        |
+//	| `associated_entities`   | Numeric[]   | List of Unit21 entity ids associated with this alert                                                              |
+//	| `associated_events`     | Numeric[]   | List of Unit21 event ids associated with this alert                                                               |
+//	| `associated_instruments`| Numeric[]   | List of Unit21 instrument ids associated with this alert                                                          |
+//	| `sources`               | String[]    | Must be list of alert sources: `INTERNAL`, `EXTERNAL`                                                             |
+//	| `statuses`              | String[]    | Must be list of alert statuses: `OPEN`, `CLOSED`                                                                  |
+//	| `tag_filters`           | String[]    | List of string tags (`key:value`) or keys to associate this alert with (e.g. `alert_type:high_velocity` or `alert_type`). If only the key is provided, we will match against all tags with that key        |
+//	| `limit`                 | Numeric     | A limit on the number of objects to be returned. Limit can range between 1 and 50, and the default is 10          |
+//	| `offset`                | Numeric     | The offset for pagination. Default is 1                                                                           |
+//	| `options`               | Object      | Options for the data included in the returned alerts. Removing unneeded options can improve response speed        |
 //
 // The `total_count` field contains the total number of alerts where the  `response_count` field contains the number of alerts included in the response.
 //
 // Follow the links for more information:
 //   - [Endpoint options](https://docs.unit21.ai/reference/endpoint-options)
-//
-//
-
 func (s *alertsAPI) ListAlerts(ctx context.Context, request operations.ListAlertsRequestBody) (*operations.ListAlertsResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/alerts/list"
@@ -359,6 +384,8 @@ func (s *alertsAPI) ListAlerts(ctx context.Context, request operations.ListAlert
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -371,7 +398,13 @@ func (s *alertsAPI) ListAlerts(ctx context.Context, request operations.ListAlert
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -385,7 +418,7 @@ func (s *alertsAPI) ListAlerts(ctx context.Context, request operations.ListAlert
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *shared.ListResponse
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
@@ -411,15 +444,13 @@ func (s *alertsAPI) ListAlerts(ctx context.Context, request operations.ListAlert
 //   - [Batch uploads](https://docs.unit21.ai/reference/batch-request-examples)
 //   - [Modifying tags](https://docs.unit21.ai/reference/modifying-tags)
 //
-//
 // The response will consist of the following fields:
 //
-//   | Field                    | Type     | Description                                             |
-//   |--------------------------|----------|---------------------------------------------------------|
-//   | `alert_id`	             | String   | Unique identifier of the alert on your platform         |
-//   | `unit21_id`	             | String   | Internal ID of the alert within Unit21's system         |
-//   | `previously_existed`	   | Boolean  | If alert (with the same `alert_id`) already exists      |
-
+//	| Field                    | Type     | Description                                             |
+//	|--------------------------|----------|---------------------------------------------------------|
+//	| `alert_id`	             | String   | Unique identifier of the alert on your platform         |
+//	| `unit21_id`	             | String   | Internal ID of the alert within Unit21's system         |
+//	| `previously_existed`	   | Boolean  | If alert (with the same `alert_id`) already exists      |
 func (s *alertsAPI) UpdateAlert(ctx context.Context, request operations.UpdateAlertRequest) (*operations.UpdateAlertResponse, error) {
 	baseURL := s.serverURL
 	url, err := utils.GenerateURL(ctx, baseURL, "/alerts/{unit21_id}/update", request, nil)
@@ -436,6 +467,8 @@ func (s *alertsAPI) UpdateAlert(ctx context.Context, request operations.UpdateAl
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -448,7 +481,13 @@ func (s *alertsAPI) UpdateAlert(ctx context.Context, request operations.UpdateAl
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -462,7 +501,7 @@ func (s *alertsAPI) UpdateAlert(ctx context.Context, request operations.UpdateAl
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out interface{}
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 

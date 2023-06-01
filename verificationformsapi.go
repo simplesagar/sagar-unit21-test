@@ -3,8 +3,10 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unit/pkg/models/operations"
@@ -34,7 +36,6 @@ func newVerificationFormsAPI(defaultClient, securityClient HTTPClient, serverURL
 
 // CreateVerificationForm - Verification Forms API
 // If you are verifying IDs and collecting user data, this endpoint creates a temporary URL to which you can redirect users.
-
 func (s *verificationFormsAPI) CreateVerificationForm(ctx context.Context, request operations.CreateVerificationFormRequestBody) (*operations.CreateVerificationFormResponse, error) {
 	baseURL := s.serverURL
 	url := strings.TrimSuffix(baseURL, "/") + "/verification-forms/create"
@@ -51,6 +52,8 @@ func (s *verificationFormsAPI) CreateVerificationForm(ctx context.Context, reque
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("user-agent", fmt.Sprintf("speakeasy-sdk/%s %s %s", s.language, s.sdkVersion, s.genVersion))
 
 	req.Header.Set("Content-Type", reqContentType)
 
@@ -63,7 +66,13 @@ func (s *verificationFormsAPI) CreateVerificationForm(ctx context.Context, reque
 	if httpRes == nil {
 		return nil, fmt.Errorf("error sending request: no response")
 	}
-	defer httpRes.Body.Close()
+
+	rawBody, err := io.ReadAll(httpRes.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	httpRes.Body.Close()
+	httpRes.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 
 	contentType := httpRes.Header.Get("Content-Type")
 
@@ -77,7 +86,7 @@ func (s *verificationFormsAPI) CreateVerificationForm(ctx context.Context, reque
 		switch {
 		case utils.MatchContentType(contentType, `application/json`):
 			var out *operations.CreateVerificationForm200ApplicationJSON
-			if err := utils.UnmarshalJsonFromResponseBody(httpRes.Body, &out); err != nil {
+			if err := utils.UnmarshalJsonFromResponseBody(bytes.NewBuffer(rawBody), &out); err != nil {
 				return nil, err
 			}
 
